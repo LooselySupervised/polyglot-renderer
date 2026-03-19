@@ -42,7 +42,7 @@ Link to an HTML file with `![[file.html]]` and use the eye toggle button to rend
 
 ## Security
 
-All HTML rendering uses sandboxed iframes (`sandbox="allow-same-origin"`). Scripts, forms, popups, and navigation are blocked. The plugin does not make any network requests.
+All HTML rendering uses sandboxed iframes. Scripts run inside the sandbox so interactive HTML files work as expected (collapsible sections, table of contents navigation, etc.). External links open in your default browser. The sandbox prevents access to Obsidian internals, network requests, and top-level navigation.
 
 ## Installation
 

@@ -1,5 +1,6 @@
 import { FileView, TFile, WorkspaceLeaf } from "obsidian";
 import type { FormatRenderer } from "registry/format-renderer";
+import { inlineAssets } from "asset-inliner";
 
 export class PolyglotFileView extends FileView {
 	private renderer: FormatRenderer;
@@ -37,7 +38,8 @@ export class PolyglotFileView extends FileView {
 			this.registerEvent(
 				this.app.vault.on("modify", async (modifiedFile) => {
 					if (modifiedFile instanceof TFile && modifiedFile === this.file) {
-						const content = await this.app.vault.cachedRead(modifiedFile);
+						let content = await this.app.vault.cachedRead(modifiedFile);
+						content = await inlineAssets(content, this.app, modifiedFile.path);
 						this.renderer.renderFile(content, this.contentEl);
 					}
 				})
@@ -49,7 +51,8 @@ export class PolyglotFileView extends FileView {
 
 	async onLoadFile(file: TFile): Promise<void> {
 		await super.onLoadFile(file);
-		const content = await this.app.vault.cachedRead(file);
+		let content = await this.app.vault.cachedRead(file);
+		content = await inlineAssets(content, this.app, file.path);
 		this.renderer.renderFile(content, this.contentEl);
 	}
 
