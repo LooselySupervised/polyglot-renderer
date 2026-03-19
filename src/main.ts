@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS, PolyglotSettings, PolyglotSettingTab } from "./settin
 import { FormatRegistry, viewTypeFor } from "registry/format-registry";
 import { PolyglotFileView } from "views/polyglot-file-view";
 import { htmlRenderer } from "renderers/html-renderer";
-import { handlePaste } from "paste-handler";
+import { handlePaste, findHtmlFiles, handleHtmlFilesPaste } from "paste-handler";
 import { processEmbeds, startEmbedObserver } from "embed-processor";
 
 export default class PolyglotRendererPlugin extends Plugin {
@@ -47,6 +47,20 @@ export default class PolyglotRendererPlugin extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on("editor-paste", (evt, editor, info) => {
 				handlePaste(evt, editor, info, this.app, this.settings);
+			})
+		);
+
+		// smart drop handler for HTML files dragged from Finder
+		this.registerEvent(
+			this.app.workspace.on("editor-drop", (evt, editor, info) => {
+				const dataTransfer = evt.dataTransfer;
+				if (!dataTransfer) return;
+
+				const htmlFiles = findHtmlFiles(dataTransfer);
+				if (htmlFiles.length === 0) return;
+
+				evt.preventDefault();
+				void handleHtmlFilesPaste(htmlFiles, editor, info, this.app, this.settings);
 			})
 		);
 
