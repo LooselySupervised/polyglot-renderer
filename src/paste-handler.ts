@@ -47,7 +47,7 @@ export function handlePaste(
 	}
 }
 
-function findHtmlFiles(clipboard: DataTransfer): File[] {
+export function findHtmlFiles(clipboard: DataTransfer): File[] {
 	const files: File[] = [];
 	for (let i = 0; i < clipboard.files.length; i++) {
 		const file = clipboard.files[i];
@@ -100,7 +100,7 @@ function handleHtmlTextPaste(html: string, editor: Editor): void {
 	editor.replaceSelection(codeBlock);
 }
 
-async function handleHtmlFilesPaste(
+export async function handleHtmlFilesPaste(
 	files: File[],
 	editor: Editor,
 	info: MarkdownView | MarkdownFileInfo,
