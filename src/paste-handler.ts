@@ -78,7 +78,7 @@ function looksLikeRealHtml(html: string, plain: string): boolean {
 	const plainText = plain.replace(/\s+/g, " ").trim();
 
 	// If text content matches, the HTML is just a wrapper around the
-	// same text (Obsidian, VSCode, etc.). Don't intercept.
+	// same text. Don't intercept.
 	if (domText === plainText) return false;
 
 	// Texts differ — check for meaningful HTML structure
