@@ -50,6 +50,15 @@ export default class PolyglotRendererPlugin extends Plugin {
 			})
 		);
 
+		// Listen for link-open requests from sandboxed iframes
+		const onMessage = (e: MessageEvent) => {
+			if (e.data?.type === "polyglot-open-url" && typeof e.data.url === "string") {
+				window.open(e.data.url);
+			}
+		};
+		window.addEventListener("message", onMessage);
+		this.register(() => window.removeEventListener("message", onMessage));
+
 	}
 
 	onunload() {
