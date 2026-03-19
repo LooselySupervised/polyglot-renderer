@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS, PolyglotSettings, PolyglotSettingTab } from "./settin
 import { FormatRegistry, viewTypeFor } from "registry/format-registry";
 import { PolyglotFileView } from "views/polyglot-file-view";
 import { htmlRenderer } from "renderers/html-renderer";
-import { handlePaste } from "paste-handler";
+import { handlePaste, findHtmlFiles, handleHtmlFilesPaste } from "paste-handler";
 import { processEmbeds, startEmbedObserver } from "embed-processor";
 
 export default class PolyglotRendererPlugin extends Plugin {
@@ -49,6 +49,29 @@ export default class PolyglotRendererPlugin extends Plugin {
 				handlePaste(evt, editor, info, this.app, this.settings);
 			})
 		);
+
+		// smart drop handler for HTML files dragged from Finder
+		this.registerEvent(
+			this.app.workspace.on("editor-drop", (evt, editor, info) => {
+				const dataTransfer = evt.dataTransfer;
+				if (!dataTransfer) return;
+
+				const htmlFiles = findHtmlFiles(dataTransfer);
+				if (htmlFiles.length === 0) return;
+
+				evt.preventDefault();
+				void handleHtmlFilesPaste(htmlFiles, editor, info, this.app, this.settings);
+			})
+		);
+
+		// Listen for link-open requests from sandboxed iframes
+		const onMessage = (e: MessageEvent) => {
+			if (e.data?.type === "polyglot-open-url" && typeof e.data.url === "string") {
+				window.open(e.data.url);
+			}
+		};
+		window.addEventListener("message", onMessage);
+		this.register(() => window.removeEventListener("message", onMessage));
 
 	}
 

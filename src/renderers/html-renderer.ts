@@ -29,7 +29,7 @@ export const htmlRenderer: FormatRenderer = {
 		} else {
 			iframe = container.createEl("iframe", { cls: "polyglot-html-file-iframe" });
 			iframe.setAttribute(IFRAME_ATTR, "");
-			iframe.setAttribute("sandbox", "allow-same-origin");
+			iframe.setAttribute("sandbox", "allow-same-origin allow-scripts");
 			iframe.setAttribute("referrerpolicy", "no-referrer");
 			iframe.srcdoc = buildSandboxDocument(content);
 		}
@@ -48,7 +48,7 @@ export function createSandboxedIframe(
 		cls: "polyglot-html-sandbox",
 	});
 
-	iframe.setAttribute("sandbox", "allow-same-origin");
+	iframe.setAttribute("sandbox", "allow-same-origin allow-scripts");
 	iframe.setAttribute("referrerpolicy", "no-referrer");
 	iframe.setAttribute("scrolling", "no");
 	iframe.srcdoc = buildSandboxDocument(source);
@@ -112,6 +112,25 @@ export function buildSandboxDocument(source: string): string {
 		white-space: pre-wrap;
 	}
 </style>
+<script>
+document.addEventListener('click', function(e) {
+	var a = e.target.closest('a[href]');
+	if (!a) return;
+	var href = a.getAttribute('href');
+	if (!href) return;
+	e.preventDefault();
+	e.stopPropagation();
+	if (href.charAt(0) === '#') {
+		// Hash link — scroll to the target element manually
+		// (default navigation breaks in srcdoc iframes on Electron)
+		var target = document.querySelector(href);
+		if (target) target.scrollIntoView({behavior: 'smooth'});
+	} else {
+		// External link — ask parent to open in system browser
+		window.parent.postMessage({type: 'polyglot-open-url', url: href}, '*');
+	}
+});
+</script>
 </head>
 <body>${source}</body>
 </html>`;

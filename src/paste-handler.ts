@@ -47,7 +47,7 @@ export function handlePaste(
 	}
 }
 
-function findHtmlFiles(clipboard: DataTransfer): File[] {
+export function findHtmlFiles(clipboard: DataTransfer): File[] {
 	const files: File[] = [];
 	for (let i = 0; i < clipboard.files.length; i++) {
 		const file = clipboard.files[i];
@@ -59,36 +59,40 @@ function findHtmlFiles(clipboard: DataTransfer): File[] {
 }
 
 function looksLikeRealHtml(html: string, plain: string): boolean {
-	// Extract pure text content by stripping ALL HTML tags
-	const textContent = html
-		.replace(/<!--[\s\S]*?-->/g, "")
-		.replace(/<style[\s\S]*?<\/style>/gi, "")
-		.replace(/<script[\s\S]*?<\/script>/gi, "")
-		.replace(/<[^>]*>/g, "")
-		.replace(/&nbsp;/gi, " ")
-		.replace(/&amp;/gi, "&")
-		.replace(/&lt;/gi, "<")
-		.replace(/&gt;/gi, ">")
-		.replace(/&quot;/gi, "\"")
-		.replace(/\s+/g, " ")
-		.trim();
+	if (!html || !plain) return false;
 
-	const normalizedPlain = plain.replace(/\s+/g, " ").trim();
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(html, "text/html");
+	const body = doc.body;
+	if (!body) return false;
 
-	// If text content matches the plain text, the HTML is just a
-	// formatted wrapper (e.g. copying within Obsidian). Only flag it
-	// if it has rich indicators that markdown can't represent.
-	if (textContent === normalizedPlain) {
-		return /<style[\s>]/i.test(html)
-			|| /<svg[\s>]/i.test(html)
-			|| /style\s*=\s*"/i.test(html);
-	}
+	// Rich media elements — always intercept
+	const richSelectors = "img[src], svg, canvas, video, audio, iframe, form";
+	if (body.querySelector(richSelectors)) return true;
 
-	// Text content differs — HTML has extra content (images, etc.)
-	// Only flag on elements that suggest real web content, not basic
-	// document structure that any copy produces.
-	return /<(table|img|svg|canvas|video|audio|iframe|style|form)/i.test(html)
-		|| /style\s*=\s*"/i.test(html);
+	// Compare text content with plain text, excluding <style> elements
+	// (their CSS text would pollute the comparison).
+	const styleEls = Array.from(body.querySelectorAll("style"));
+	styleEls.forEach(el => el.remove());
+	const domText = (body.textContent ?? "").replace(/\s+/g, " ").trim();
+	const plainText = plain.replace(/\s+/g, " ").trim();
+
+	// If text content matches, the HTML is just a wrapper around the
+	// same text. Don't intercept.
+	if (domText === plainText) return false;
+
+	// Texts differ — check for meaningful HTML structure
+	const structuralSelectors = "table, ul, ol, h1, h2, h3, h4, h5, h6, blockquote, pre, hr";
+	if (body.querySelector(structuralSelectors)) return true;
+
+	if (body.querySelector("[style]")) return true;
+
+	if (styleEls.length > 0) return true;
+
+	const blocks = body.querySelectorAll("div, p, section, article, header, footer, nav, main");
+	if (blocks.length >= 2) return true;
+
+	return false;
 }
 
 function handleHtmlTextPaste(html: string, editor: Editor): void {
@@ -96,7 +100,7 @@ function handleHtmlTextPaste(html: string, editor: Editor): void {
 	editor.replaceSelection(codeBlock);
 }
 
-async function handleHtmlFilesPaste(
+export async function handleHtmlFilesPaste(
 	files: File[],
 	editor: Editor,
 	info: MarkdownView | MarkdownFileInfo,
@@ -138,7 +142,7 @@ async function handleHtmlFilesPaste(
 		for (const file of files) {
 			const content = await file.text();
 			const baseName = file.name.replace(/\.html?$/i, "");
-			const fileName = await uniqueFileName(app, targetDir, baseName, "html");
+			const fileName = uniqueFileName(app, targetDir, baseName, "html");
 			const filePath = normalizePath(targetDir ? `${targetDir}/${fileName}` : fileName);
 
 			const createdFile = await app.vault.create(filePath, content);
@@ -239,7 +243,7 @@ class PasteDestinationModal extends Modal {
 		new Setting(contentEl)
 			.setName("Custom folder")
 			.addText((text) =>
-				text.setPlaceholder("path/to/folder").onChange((value) => {
+				text.setPlaceholder("Path/to/folder").onChange((value) => {
 					customPath = value;
 				})
 			)
@@ -307,7 +311,7 @@ class ContentPasteBehaviorModal extends Modal {
 
 		new Setting(contentEl)
 			.setName("Convert to Markdown")
-			.setDesc("Let Obsidian convert the HTML to formatted markdown.")
+			.setDesc("Let Obsidian convert the HTML to formatted Markdown.")
 			.addButton((btn) =>
 				btn.setButtonText("Markdown").onClick(() => {
 					this.resolved = true;
@@ -336,12 +340,12 @@ class ContentPasteBehaviorModal extends Modal {
 	}
 }
 
-async function uniqueFileName(
+function uniqueFileName(
 	app: App,
 	dir: string,
 	baseName: string,
 	ext: string
-): Promise<string> {
+): string {
 	let candidate = `${baseName}.${ext}`;
 	let counter = 1;
 	while (app.vault.getAbstractFileByPath(normalizePath(dir ? `${dir}/${candidate}` : candidate))) {

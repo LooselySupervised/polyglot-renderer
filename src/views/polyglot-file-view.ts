@@ -1,5 +1,6 @@
 import { FileView, TFile, WorkspaceLeaf } from "obsidian";
 import type { FormatRenderer } from "registry/format-renderer";
+import { inlineAssets } from "asset-inliner";
 
 export class PolyglotFileView extends FileView {
 	private renderer: FormatRenderer;
@@ -28,7 +29,7 @@ export class PolyglotFileView extends FileView {
 		return this.renderer.extensions.includes(extension);
 	}
 
-	protected async onOpen(): Promise<void> {
+	protected onOpen(): Promise<void> {
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass("polyglot-file-view");
@@ -37,18 +38,21 @@ export class PolyglotFileView extends FileView {
 			this.registerEvent(
 				this.app.vault.on("modify", async (modifiedFile) => {
 					if (modifiedFile instanceof TFile && modifiedFile === this.file) {
-						const content = await this.app.vault.cachedRead(modifiedFile);
+						let content = await this.app.vault.cachedRead(modifiedFile);
+						content = await inlineAssets(content, this.app, modifiedFile.path);
 						this.renderer.renderFile(content, this.contentEl);
 					}
 				})
 			);
 			this.hasRegisteredVaultEvents = true;
 		}
+		return Promise.resolve();
 	}
 
 	async onLoadFile(file: TFile): Promise<void> {
 		await super.onLoadFile(file);
-		const content = await this.app.vault.cachedRead(file);
+		let content = await this.app.vault.cachedRead(file);
+		content = await inlineAssets(content, this.app, file.path);
 		this.renderer.renderFile(content, this.contentEl);
 	}
 
@@ -57,7 +61,8 @@ export class PolyglotFileView extends FileView {
 		await super.onUnloadFile(file);
 	}
 
-	protected async onClose(): Promise<void> {
+	protected onClose(): Promise<void> {
 		this.contentEl.empty();
+		return Promise.resolve();
 	}
 }
