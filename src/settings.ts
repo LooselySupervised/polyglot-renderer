@@ -79,7 +79,7 @@ export class PolyglotSettingTab extends PluginSettingTab {
 				.setDesc("Folder path relative to vault root (e.g. \"assets/html\"). Created automatically if it doesn't exist.")
 				.addText((text) =>
 					text
-						.setPlaceholder("assets/html")
+						.setPlaceholder("Folder path")
 						.setValue(this.plugin.settings.defaultPasteFolder)
 						.onChange(async (value) => {
 							this.plugin.settings.defaultPasteFolder = value.trim();

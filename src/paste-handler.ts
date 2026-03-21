@@ -243,7 +243,7 @@ class PasteDestinationModal extends Modal {
 		new Setting(contentEl)
 			.setName("Custom folder")
 			.addText((text) =>
-				text.setPlaceholder("Path/to/folder").onChange((value) => {
+				text.setPlaceholder("Folder path").onChange((value) => {
 					customPath = value;
 				})
 			)
